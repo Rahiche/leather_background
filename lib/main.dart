@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -14,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Simple Shader Demo',
+      title: 'Leather background shader demo',
       theme: ThemeData(
         colorSchemeSeed: Colors.blue,
         useMaterial3: true,
@@ -33,7 +31,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage>
     with SingleTickerProviderStateMixin {
-  Offset lightPosition = const Offset(0.5, 0.5); // Default light position
+  Offset lightPosition = const Offset(0.5, 0.5);
   AnimationController? _animationController;
   Animation<Offset>? _animation;
 
@@ -43,25 +41,32 @@ class _MyHomePageState extends State<MyHomePage>
 
     _animationController = AnimationController(
       vsync: this,
-      duration:
-          const Duration(milliseconds: 500), // Adjust the duration as needed
+      duration: const Duration(milliseconds: 500),
     );
 
-    accelerometerEventStream().listen((AccelerometerEvent event) {
-      final newLightPosition = Offset(
-        (event.x + 10) / 20,
-        (event.y + 10) / 20,
-      );
+    accelerometerEventStream().listen(_handleAccelerometerEvent);
+  }
 
-      _animation =
-          Tween<Offset>(begin: lightPosition, end: newLightPosition).animate(
-        CurvedAnimation(parent: _animationController!, curve: Curves.easeInOut),
-      )..addListener(() => setState(() {
-                lightPosition = _animation!.value;
-              }));
+  void _handleAccelerometerEvent(AccelerometerEvent event) {
+    final Offset newLightPosition = Offset(
+      (event.x + 10) / 20,
+      (event.y + 10) / 20,
+    );
 
-      _animationController!.reset();
-      _animationController!.forward();
+    _configureLightPositionAnimation(newLightPosition);
+
+    _animationController!.reset();
+    _animationController!.forward();
+  }
+
+  void _configureLightPositionAnimation(Offset newLightPosition) {
+    _animation =
+        Tween<Offset>(begin: lightPosition, end: newLightPosition).animate(
+      CurvedAnimation(parent: _animationController!, curve: Curves.easeInOut),
+    );
+
+    _animation!.addListener(() {
+      setState(() => lightPosition = _animation!.value);
     });
   }
 
@@ -72,6 +77,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   void _updateLightPosition(Offset localPosition, Size size) {
+    _animationController?.stop();
     setState(() {
       lightPosition = Offset(
         localPosition.dx / size.width,
@@ -84,8 +90,11 @@ class _MyHomePageState extends State<MyHomePage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: GestureDetector(
+        onPanEnd: (_) => _animationController?.reset(),
         onPanUpdate: (details) => _updateLightPosition(
-            details.localPosition, MediaQuery.of(context).size),
+          details.localPosition,
+          MediaQuery.sizeOf(context),
+        ),
         child: SizedBox.expand(
           child: ShaderBuilder(
             (context, shader, child) {
@@ -109,7 +118,11 @@ class _MyHomePageState extends State<MyHomePage>
 }
 
 class ShaderPainter extends CustomPainter {
-  ShaderPainter({required this.shader, required this.lightPosition});
+  ShaderPainter({
+    required this.shader,
+    required this.lightPosition,
+  });
+
   ui.FragmentShader shader;
   Offset lightPosition;
 
@@ -117,8 +130,8 @@ class ShaderPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     shader.setFloat(0, size.width);
     shader.setFloat(1, size.height);
-    shader.setFloat(2, lightPosition.dx); // Update light x position
-    shader.setFloat(3, lightPosition.dy); // Update light y position
+    shader.setFloat(2, lightPosition.dx);
+    shader.setFloat(3, lightPosition.dy);
 
     final paint = Paint()..shader = shader;
     canvas.drawRect(
@@ -128,7 +141,7 @@ class ShaderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true; // Repaint whenever the light position changes
+  bool shouldRepaint(covariant ShaderPainter oldDelegate) {
+    return oldDelegate.lightPosition != lightPosition;
   }
 }
