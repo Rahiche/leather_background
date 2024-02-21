@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Leather background shader demo',
+      title: 'Leather background demo',
       theme: ThemeData(
         colorSchemeSeed: Colors.blue,
         useMaterial3: true,
